@@ -1,0 +1,18 @@
+# Build
+build/
+
+# macOS
+.DS_Store
+
+# Clangd
+.cache/
+
+# IDE
+.vscode/
+*.xcodeproj/
+*.xcworkspace/
+
+# Compiled objects
+*.o
+*.a
+*.dylib

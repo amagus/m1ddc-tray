@@ -1,0 +1,3 @@
+[submodule "m1ddc"]
+	path = m1ddc
+	url = https://github.com/waydabber/m1ddc.git
