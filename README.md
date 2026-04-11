@@ -30,7 +30,7 @@ cmake --build build
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
 
-The bundled [m1ddc](https://github.com/waydabber/m1ddc) library (`m1ddc/`) is MIT licensed.
+The bundled [m1ddc](https://github.com/waydabber/m1ddc) library (`m1ddc/`) is MIT licensed. Please refer to its own licensing for further information.
 
 ## TO-DO
 

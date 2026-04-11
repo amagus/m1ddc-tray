@@ -1,0 +1,5 @@
+Checks: "readability-implicit-bool-conversion"
+WarningsAsErrors: "readability-implicit-bool-conversion"
+CheckOptions:
+  - key: readability-implicit-bool-conversion.AllowIntegerConditions
+    value: "true"

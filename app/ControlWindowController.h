@@ -4,6 +4,6 @@
 @interface ControlWindowController : NSWindowController
 
 - (instancetype)initWithDisplayIndex:(int)index
-                   displayController:(DisplayController *)controller;
+                   displayController:(DisplayController*)controller;
 
 @end
