@@ -44,6 +44,8 @@ static const PopupOption kKVMOptions[] = {
 @property(nonatomic, strong) dispatch_queue_t ddcQueue;
 @property(nonatomic, strong) NSTextField* nameField;
 @property(nonatomic, strong) NSPopUpButton* profilePopup;
+@property(nonatomic, strong) NSPopUpButton* macInputPopup;
+@property(nonatomic, strong) NSButton* suppressHUDCheckbox;
 @end
 
 @implementation ControlWindowController
@@ -363,6 +365,41 @@ static const PopupOption kKVMOptions[] = {
                                      valueLabel:nil];
   profileRow.hidden = NO;
   [_mainStack addArrangedSubview:profileRow];
+
+  // This Mac's Input popup
+  _macInputPopup = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+  _macInputPopup.target = self;
+  _macInputPopup.action = @selector(macInputChanged:);
+  [_macInputPopup addItemWithTitle:@"None"];
+  _macInputPopup.lastItem.tag = -1;
+  [_macInputPopup.menu addItem:[NSMenuItem separatorItem]];
+  for (NSDictionary* opt in
+       [_displayController inputOptionsForDisplayIndex:_displayIndex]) {
+    [_macInputPopup addItemWithTitle:opt[@"label"]];
+    _macInputPopup.lastItem.tag = [opt[@"value"] integerValue];
+  }
+  NSInteger curMacInput = [_displayController thisComputerInputForUUID:uuid];
+  for (NSMenuItem* item in _macInputPopup.itemArray) {
+    if (item.tag == curMacInput) {
+      [_macInputPopup selectItem:item];
+      break;
+    }
+  }
+  NSView* macInputRow = [self createRowWithLabel:@"This Mac's Input"
+                                         control:_macInputPopup
+                                      valueLabel:nil];
+  macInputRow.hidden = NO;
+  [_mainStack addArrangedSubview:macInputRow];
+
+  // Suppress Volume HUD checkbox
+  _suppressHUDCheckbox =
+      [NSButton checkboxWithTitle:@"Suppress macOS Volume HUD"
+                           target:self
+                           action:@selector(suppressHUDChanged:)];
+  _suppressHUDCheckbox.state =
+      [_displayController suppressVolumeHUDForUUID:uuid] ? NSControlStateValueOn
+                                                         : NSControlStateValueOff;
+  [_mainStack addArrangedSubview:_suppressHUDCheckbox];
 }
 
 #pragma mark - Probing
@@ -599,6 +636,24 @@ static const PopupOption kKVMOptions[] = {
                                        value:value
                              forDisplayIndex:self->_displayIndex];
   });
+}
+
+- (void)macInputChanged:(NSPopUpButton*)sender {
+  NSString* uuid = [_displayController displayUUIDAtIndex:_displayIndex];
+  [_displayController setThisComputerInput:sender.selectedItem.tag forUUID:uuid];
+  [[NSNotificationCenter defaultCenter]
+      postNotificationName:@"DisplaySettingsDidChange"
+                    object:nil];
+}
+
+- (void)suppressHUDChanged:(NSButton*)sender {
+  NSString* uuid = [_displayController displayUUIDAtIndex:_displayIndex];
+  [_displayController
+      setSuppressVolumeHUD:(sender.state == NSControlStateValueOn)
+                  forUUID:uuid];
+  [[NSNotificationCenter defaultCenter]
+      postNotificationName:@"DisplaySettingsDidChange"
+                    object:nil];
 }
 
 - (void)controlTextDidChange:(NSNotification*)notification {

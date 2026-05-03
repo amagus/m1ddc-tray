@@ -71,12 +71,15 @@ static NSDictionary<NSNumber*, NSString*>* const kInputSourceLabels = @{
     req[4] = 0x6E ^ req[0] ^ req[1] ^ req[2] ^ req[3]; // checksum
 
     usleep(DDC_WAIT);
-    if (IOAVServiceWriteI2C(avService, 0x37, 0x51, req, 5))
+    IOReturn writeErr = IOAVServiceWriteI2C(avService, 0x37, 0x51, req, 5);
+    if (writeErr)
       break;
 
     UInt8 resp[64] = {0};
     usleep(DDC_WAIT);
-    if (IOAVServiceReadI2C(avService, 0x37, 0x51, resp, sizeof(resp)))
+    IOReturn readErr =
+        IOAVServiceReadI2C(avService, 0x37, 0x51, resp, sizeof(resp));
+    if (readErr)
       break;
 
     // Response: [?][len|0x80][0xE3][off_hi][off_lo][data…][checksum]
@@ -132,9 +135,9 @@ static NSDictionary<NSNumber*, NSString*>* const kInputSourceLabels = @{
     unsigned int val;
     if (![[NSScanner scannerWithString:hex] scanHexInt:&val])
       continue;
-    NSString* label =
-        labels[@(val)] != nil ? labels[@(val)]
-                              : [NSString stringWithFormat:@"Source 0x%02X", val];
+    NSString* label = labels[@(val)] != nil
+                          ? labels[@(val)]
+                          : [NSString stringWithFormat:@"Source 0x%02X", val];
     [options addObject:@{@"label" : label, @"value" : @(val)}];
   }
   return options.count > 0 ? options : nil;
@@ -150,18 +153,25 @@ static NSDictionary<NSNumber*, NSString*>* const kInputSourceLabels = @{
       continue;
 
     IOAVServiceRef svc = [self avServiceForDisplayIndex:i];
-    NSArray* options = nil;
-    if (svc != NULL) {
-      NSString* caps = [self readCapabilitiesStringForService:svc];
-      if (caps != nil)
-        options = [self parseInputOptionsFromCapabilities:caps];
-    }
-    // Store result — empty array means "tried but found nothing", triggers
-    // fallback
+    if (svc == NULL)
+      continue;
+    NSString* caps = [self readCapabilitiesStringForService:svc];
+    if (caps == nil)
+      continue;
+    // Got a capabilities string — parse it. Empty array means the string had
+    // no input block; that's a real result so we cache it and use the fallback.
+    // Nil svc or nil caps are transient failures and are not cached, allowing
+    // retry on the next rebuildMenu call.
+    NSArray* options = [self parseInputOptionsFromCapabilities:caps];
     _inputOptionsByUUID[uuid] = options != nil ? options : @[];
     loaded = YES;
   }
   return loaded;
+}
+
+- (BOOL)capabilitiesLoadedForDisplayIndex:(int)index {
+  NSString* uuid = [self displayUUIDAtIndex:index];
+  return uuid.length > 0 && _inputOptionsByUUID[uuid] != nil;
 }
 
 // Returns labelled input options for a display. Uses capabilities cache when
@@ -313,6 +323,43 @@ static NSString* const kDisplaySettingsKey = @"DisplaySettings";
     [s removeObjectForKey:@"inputProfile"];
   } else {
     s[@"inputProfile"] = profile;
+  }
+  [self saveSettings:s forUUID:uuid];
+}
+
+- (NSInteger)thisComputerInputForUUID:(NSString*)uuid {
+  if (!uuid.length)
+    return -1;
+  NSNumber* val = [self settingsForUUID:uuid][@"thisComputerInput"];
+  return val ? val.integerValue : -1;
+}
+
+- (void)setThisComputerInput:(NSInteger)inputValue forUUID:(NSString*)uuid {
+  if (!uuid.length)
+    return;
+  NSMutableDictionary* s = [self settingsForUUID:uuid];
+  if (inputValue >= 0) {
+    s[@"thisComputerInput"] = @(inputValue);
+  } else {
+    [s removeObjectForKey:@"thisComputerInput"];
+  }
+  [self saveSettings:s forUUID:uuid];
+}
+
+- (BOOL)suppressVolumeHUDForUUID:(NSString*)uuid {
+  if (!uuid.length)
+    return NO;
+  return [[self settingsForUUID:uuid][@"suppressVolumeHUD"] boolValue];
+}
+
+- (void)setSuppressVolumeHUD:(BOOL)suppress forUUID:(NSString*)uuid {
+  if (!uuid.length)
+    return;
+  NSMutableDictionary* s = [self settingsForUUID:uuid];
+  if (suppress) {
+    s[@"suppressVolumeHUD"] = @YES;
+  } else {
+    [s removeObjectForKey:@"suppressVolumeHUD"];
   }
   [self saveSettings:s forUUID:uuid];
 }

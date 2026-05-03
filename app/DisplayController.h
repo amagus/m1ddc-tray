@@ -25,6 +25,7 @@
 // Input source capabilities (synchronous - call from background queue after
 // refreshDisplayList)
 - (BOOL)loadCapabilitiesIfNeeded; // returns YES if new data was loaded
+- (BOOL)capabilitiesLoadedForDisplayIndex:(int)index;
 - (NSArray<NSDictionary*>*)inputOptionsForDisplayIndex:(int)index;
 
 // Per-display persistent settings (stored by UUID)
@@ -32,6 +33,10 @@
 - (void)setCustomName:(NSString*)name forUUID:(NSString*)uuid;
 - (NSString*)inputProfileForUUID:(NSString*)uuid; // "auto", "standard", "lg"
 - (void)setInputProfile:(NSString*)profile forUUID:(NSString*)uuid;
+- (NSInteger)thisComputerInputForUUID:(NSString*)uuid; // -1 if not configured
+- (void)setThisComputerInput:(NSInteger)inputValue forUUID:(NSString*)uuid;
+- (BOOL)suppressVolumeHUDForUUID:(NSString*)uuid;
+- (void)setSuppressVolumeHUD:(BOOL)suppress forUUID:(NSString*)uuid;
 - (BOOL)usesAlternateInputForIndex:(int)index;
 - (UInt8)inputAttributeCodeForIndex:(int)index;
 - (NSString*)manufacturerForIndex:(int)index;
